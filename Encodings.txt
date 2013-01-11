@@ -1,0 +1,34 @@
+This file contains the specification of all supported encodings.
+
+Plain:
+  - Supported Types: all
+  This is the plain encoding that must be supported for types.  It is
+  intended to be the simplest encoding.  Values are encoded back to back. 
+  - For native types, this outputs the data as little endian. Floating
+  point types are encoded in IEEE.  
+  - For the byte array type, it encodes the length as a 4 byte little
+  endian, followed by the bytes.
+
+GroupVarInt:
+  - Supported Types: INT32, INT64
+  32-bit ints are encoded in groups of 4 with 1 leading bytes to encode the
+  byte length of the following 4 ints.  64-bit are encoded in groups of 5,
+  with 2 leading bytes to encode the byte length of the 5 ints.  
+
+  For 32-bit ints, the leading byte contains 1 bits per int.  Each length
+  encoding specifies the number of bytes minus 1 for that int.  For example
+  a byte value of 0b00011011, indicates that the first int has 1 byte, the
+  second 2, the 3rd 3 and 4th 4.  In this case, the entire row group would
+  be: 1 + (1 + 2 + 3 + 4) = 11 bytes.  The ints themselves as just encoded
+  as little endian.
+
+  For 64-bit ints, the lengths of the 5 ints is encoded as 3 bits.  Combined,
+  this uses 15 bits and fits in 2 bytes.  The msb of the two bytes is unused.
+  Like the 32-bit case, after the length bytes, the data bytes follow.
+
+  In the case where the data does not make a complete group, (e.g. 3 32-bit ints),
+  a complete group should still be output with 0's filling in for the remainder.
+  For example, if the input was (1,2,3,4,5): the resulting encoding should
+  behave as if the input was (1,2,3,4,5,0,0,0) and the two groups should be
+  encoded back to back.
+

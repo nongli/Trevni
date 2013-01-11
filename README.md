@@ -25,7 +25,7 @@ contains exactly one column chunk per column.  Column chunks contain one or
 more pages. 
 
 Unit of parallelization:
-  MapReduce - File/Row Group
-  IO - Column chunk
-  Encoding/Compression - Page
+  - MapReduce - File/Row Group
+  - IO - Column chunk
+  - Encoding/Compression - Page
 
