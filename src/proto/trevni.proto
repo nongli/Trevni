@@ -17,30 +17,30 @@
  */
 
 /**
- * File format description for the trevni file format
+ * File format description for the redfile file format
  */
 
-package trevni;
-option java_package = "com.apache.trevni";
-option java_outer_classname = "TrevniProtos";
+package redfile;
+option java_package = "com.apache.redfile";
+option java_outer_classname = "RedfileProtos";
 option java_generate_equals_and_hash = true;
 
 /**
- * Types supported by trevni.
- * TODO: timestamp type?  hive has this defined as 96 bits so it might be convenient to
- * explicitly support it.
+ * Types supported by redfile.  These types are intended to be for the storage
+ * format, and in particular how they interact with different encodings.
  */
 enum Type {
   BOOLEAN = 0;
   INT32 = 1;
   INT64 = 2;
-  FLOAT = 3;
-  DOUBLE = 4;
-  STRING = 5;
+  INT96 = 3;
+  FLOAT = 4;
+  DOUBLE = 5;
+  BYTE_ARRAY = 6;
 }
 
 /**
- * Encodings supported by trevni.  Not all encodings are valid for all types.
+ * Encodings supported by redfile.  Not all encodings are valid for all types.
  */
 enum Encoding {
   /** Default encoding.
@@ -49,12 +49,57 @@ enum Encoding {
    * INT64 - 8 bytes per value.  Stored as little-endian.
    * FLOAT - 4 bytes per value.  IEEE. Stored as little-endian.
    * DOUBLE - 8 bytes per value.  IEEE. Stored as little-endian.
-   * STRING - 4 byte length stored as little endian, followed by bytes.  
+   * BYTE_ARRAY - 4 byte length stored as little endian, followed by bytes.  
    */
-  DEFAULT = 0;
+  PLAIN = 0;
 
   /** Group VarInt encoding for INT32/INT64. **/
   GROUP_VAR_INT = 1;
+}
+
+/**
+ * Supported compression algorithms.  
+ */
+enum Compression {
+  UNCOMPRESSED = 0;
+  SNAPPY = 1;
+  GZIP = 2;
+  LZO = 3;
+}
+
+enum PageType {
+  DATA_PAGE = 0;
+  INDEX_PAGE = 1;
+}
+
+/** Data page header **/
+message DataPageHeader {
+  required uint32 num_values = 1;
+
+  /** Encoding used for this data page **/
+  required Encoding encoding = 2;
+}
+
+message IndexPageHeader {
+  /** TODO: **/
+}
+
+message PageHeader {
+  required PageType type = 1;
+
+  /** Uncompressed page size in bytes **/
+  required uint32 uncompressed_page_size = 2;
+  
+  /** Compressed page size in bytes **/
+  required uint32 compressed_page_size = 3;
+
+  /** 32bit crc for the data below. This allows for disabling checksumming in 
+   *  if only a few pages needs to be read 
+   **/
+  required uint32 crc = 4;
+
+  optional DataPageHeader data_page = 5;
+  optional IndexPageHeader index_page = 6;
 }
 
 /** 
@@ -72,26 +117,30 @@ message ColumnMetaData {
   /** Type of this column **/
   required Type type = 1;
 
-  /** Encoding for this column **/
-  required Encoding encoding = 2 [default = DEFAULT];
+  /** Set of all encodings used for this column **/
+  repeated Encoding encodings = 2;
 
   /** Path in schema **/
-  optional string schema = 3;
+  repeated string path_in_schema = 3;
 
   /** Compression codec **/
-  optional string compression_codec = 4;
+  required Compression codec = 4;
 
   /** Number of values in this column **/
-  optional uint64 num_values = 5;
+  required uint64 num_values = 5;
+
+  /** Max defintion and repetition levels **/
+  required uint32 max_definition_level = 6;
+  required uint32 max_repetition_level = 7;
 
   /** Byte offset from beginning of file to first data page **/
-  optional uint64 data_page_offset = 6;
+  optional uint64 data_page_offset = 8;
 
   /** Byte offset from beginning of file to root index page **/
-  optional uint64 index_page_offset = 7;
+  optional uint64 index_page_offset = 9;
 
   /** Optional key/value metadata **/
-  repeated KeyValue key_value_metadata = 8; 
+  repeated KeyValue key_value_metadata = 10;
 }
 
 /**
@@ -110,20 +159,25 @@ message FileMetaData {
 
   message RowGroup {
     repeated ColumnStart columns = 1;
+    /** Total byte size of all the uncompressed column data in this row group **/
+    required uint64 total_byte_size = 2;
   }
 
+  /** Version of this file **/
+  required uint32 version = 1;
+
   /** Number of rows in this file **/
-  required uint64 num_rows = 1;
+  required uint64 num_rows = 2;
 
   /** Number of cols in the schema for this file **/
-  required uint64 num_cols = 2;
+  required uint64 num_cols = 3;
 
   /** Row groups in this file **/
-  repeated RowGroup row_groups = 3;
+  repeated RowGroup row_groups = 4;
 
   /** Optional key/value metadata **/
-  repeated KeyValue key_value_metadata = 4; 
+  repeated KeyValue key_value_metadata = 5;
 
   /** 32bit crc for the file metadata **/
-  optional uint64 meta_data_crc = 5;
+  optional uint32 meta_data_crc = 6;
 }
