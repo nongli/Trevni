@@ -19,11 +19,8 @@
 /**
  * File format description for the redfile file format
  */
-
-package redfile;
-option java_package = "com.apache.redfile";
-option java_outer_classname = "RedfileProtos";
-option java_generate_equals_and_hash = true;
+namespace cpp redfile
+namespace java com.apache.redfile
 
 /**
  * Types supported by redfile.  These types are intended to be for the storage
@@ -73,111 +70,111 @@ enum PageType {
 }
 
 /** Data page header **/
-message DataPageHeader {
-  required uint32 num_values = 1;
+struct DataPageHeader {
+  1: required i32 num_values
 
   /** Encoding used for this data page **/
-  required Encoding encoding = 2;
+  2: required Encoding encoding
 }
 
-message IndexPageHeader {
+struct IndexPageHeader {
   /** TODO: **/
 }
 
-message PageHeader {
-  required PageType type = 1;
+struct PageHeader {
+  1: required PageType type
 
   /** Uncompressed page size in bytes **/
-  required uint32 uncompressed_page_size = 2;
+  2: required i32 uncompressed_page_size
   
   /** Compressed page size in bytes **/
-  required uint32 compressed_page_size = 3;
+  3: required i32 compressed_page_size
 
   /** 32bit crc for the data below. This allows for disabling checksumming in 
    *  if only a few pages needs to be read 
    **/
-  required uint32 crc = 4;
+  4: required i32 crc
 
-  optional DataPageHeader data_page = 5;
-  optional IndexPageHeader index_page = 6;
+  5: optional DataPageHeader data_page;
+  6: optional IndexPageHeader index_page;
 }
 
 /** 
- * Wrapper message to store key values
+ * Wrapper struct to store key values
  */
- message KeyValue {
-  required string key = 1;
-  optional bytes entry = 2;
+ struct KeyValue {
+  1: required string key
+  2: optional string value
  }
 
 /**
  * Description for column metadata
  */
-message ColumnMetaData {
+struct ColumnMetaData {
   /** Type of this column **/
-  required Type type = 1;
+  1: required Type type
 
   /** Set of all encodings used for this column **/
-  repeated Encoding encodings = 2;
+  2: required list<Encoding> encodings
 
   /** Path in schema **/
-  repeated string path_in_schema = 3;
+  3: required list<string> path_in_schema
 
   /** Compression codec **/
-  required Compression codec = 4;
+  4: required Compression codec
 
   /** Number of values in this column **/
-  required uint64 num_values = 5;
+  5: required i64 num_values
 
   /** Max defintion and repetition levels **/
-  required uint32 max_definition_level = 6;
-  required uint32 max_repetition_level = 7;
+  6: required i32 max_definition_level
+  7: required i32 max_repetition_level
 
   /** Byte offset from beginning of file to first data page **/
-  optional uint64 data_page_offset = 8;
+  8: optional i64 data_page_offset
 
   /** Byte offset from beginning of file to root index page **/
-  optional uint64 index_page_offset = 9;
+  9: optional i64 index_page_offset
 
   /** Optional key/value metadata **/
-  repeated KeyValue key_value_metadata = 10;
+  10: list<KeyValue> key_value_metadata
+}
+
+struct ColumnStart {
+  /** File where column data is stored.  If not set, assumed to be same file as 
+    * metadata 
+    **/
+  1: optional string file_path
+
+  /** Byte offset in file_path to the ColumnMetaData **/
+  2: required i64 file_offset
+}
+  
+struct RowGroup {
+  1: required list<ColumnStart> columns
+  /** Total byte size of all the uncompressed column data in this row group **/
+  2: required i64 total_byte_size
 }
 
 /**
  * Description for file metadata
  */
-message FileMetaData {
-  message ColumnStart {
-    /** File where column data is stored.  If not set, assumed to be same file as 
-     * metadata 
-     **/
-    optional string file_path = 1;
-
-    /** Byte offset in file_path to the ColumnMetaData **/
-    required uint64 file_offset = 2;
-  }
-
-  message RowGroup {
-    repeated ColumnStart columns = 1;
-    /** Total byte size of all the uncompressed column data in this row group **/
-    required uint64 total_byte_size = 2;
-  }
-
+struct FileMetaData {
   /** Version of this file **/
-  required uint32 version = 1;
+  1: required i32 version
 
   /** Number of rows in this file **/
-  required uint64 num_rows = 2;
+  2: required i64 num_rows
 
   /** Number of cols in the schema for this file **/
-  required uint64 num_cols = 3;
+  3: required i32 num_cols
 
   /** Row groups in this file **/
-  repeated RowGroup row_groups = 4;
+  4: list<RowGroup> row_groups
 
   /** Optional key/value metadata **/
-  repeated KeyValue key_value_metadata = 5;
+  5: list<KeyValue> key_value_metadata
 
   /** 32bit crc for the file metadata **/
-  optional uint32 meta_data_crc = 6;
+  6: optional i32 meta_data_crc
 }
